@@ -692,10 +692,11 @@ function renderInicio(){
 
   const mods = (userData.modalidades||[]);
   const modsEl = document.getElementById('minhas-modalidades');
-  if(!mods.length){
+  const modsVisiveis = mods.filter(m=>m.status!=='removido');
+  if(!modsVisiveis.length){
     modsEl.innerHTML = '<div class="empty"><div class="empty-icon">🏅</div>Nenhuma modalidade cadastrada</div>';
   } else {
-    modsEl.innerHTML = mods.map(m=>{
+    modsEl.innerHTML = modsVisiveis.map(m=>{
       const statusLabel = m.status==='aprovado' ? '<span class="badge badge-quite">✓ Ativo</span>' : m.status==='interesse' ? '<span class="badge" style="background:#fff8e6;color:var(--warning)">Aguardando aprovação</span>' : '<span class="badge badge-ex">—</span>';
       return `<div class="list-item"><div><strong style="font-size:14px">${m.nome}</strong><div style="font-size:11px;color:var(--text3)">Desde ${fmtDate(m.inicio)}</div></div>${statusLabel}</div>`;
     }).join('');
@@ -887,18 +888,23 @@ function renderModalidadesTab(){
   const mods=(userData.modalidades||[]);
   const atuaisEl=document.getElementById('modalidades-atuais');
   const modsAprovadas = mods.filter(m=>m.status==='aprovado');
+  const modsAtivas = mods.filter(m=>m.status!=='removido');
+  const modsRemovidas = mods.filter(m=>m.status==='removido');
   const calcAtual = calcMensalidade(modsAprovadas);
-  atuaisEl.innerHTML = mods.length ? mods.map(m=>{
+  atuaisEl.innerHTML = modsAtivas.length ? modsAtivas.map(m=>{
     const statusLabel = m.status==='aprovado' ? '<span class="badge badge-quite">✓ Ativa</span>' : '<span class="badge" style="background:#fff8e6;color:var(--warning)">Aguardando</span>';
     const conf = getModConfig(m.nome);
     return `<div class="list-item"><div><strong style="font-size:14px">${m.nome}</strong><div style="font-size:11px;color:var(--text3)">R$ ${(conf.valor||0).toFixed(2).replace('.',',')} base</div></div>${statusLabel}</div>`;
   }).join('') : '<div class="empty"><div class="empty-icon">🏅</div>Nenhuma modalidade</div>';
+  if(modsRemovidas.length){
+    atuaisEl.innerHTML += modsRemovidas.map(m=>`<div class="list-item" style="opacity:.6"><div><strong style="font-size:13px">${m.nome}</strong><div style="font-size:11px;color:var(--text3)">Removida pela diretoria</div></div><span class="badge badge-ex">Removida</span></div>`).join('');
+  }
   if(modsAprovadas.length){
     atuaisEl.innerHTML += `<div style="margin-top:10px;padding:10px 12px;background:var(--surface2);border-radius:8px;font-size:13px"><strong>Sua mensalidade total: R$ ${calcAtual.total.toFixed(2).replace('.',',')}</strong></div>`;
   }
 
   const disponivEl=document.getElementById('modalidades-disponiveis');
-  const jaInscrito = mods.map(m=>m.nome);
+  const jaInscrito = modsAtivas.map(m=>m.nome);
   const disponiveis = configModalidades.filter(m=>!jaInscrito.includes(m.nome));
   disponivEl.innerHTML = disponiveis.length ? disponiveis.map(m=>{
     const custoExtra = modsAprovadas.length ? calcMensalidade(m.adicional!==undefined?[...modsAprovadas,{nome:m.nome,status:'aprovado'}]:modsAprovadas).total - calcAtual.total : m.valor;
