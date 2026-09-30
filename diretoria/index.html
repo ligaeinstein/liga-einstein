@@ -1183,12 +1183,18 @@ window.verAssociado = (email) => {
   const debito = modsAprov.length ? getDebitoAssociado(email) : {total:0, meses:[]};
   const parc = u.parcelamento_mensalidade;
   document.getElementById('assoc-modal-nome').textContent = u.nome||email;
+  const modsListHtml = (u.modalidades||[]).length ? (u.modalidades||[]).map((m,idx)=>{
+    const statusLabel = m.status==='aprovado' ? '✓ aprovada' : m.status==='removido' ? 'removida' : m.status;
+    const removeBtn = (m.status==='aprovado' && canEdit) ? ` <button class="btn btn-danger btn-xs" style="margin-left:6px" onclick="removerModalidadeAssociado('${email}',${idx})">Remover</button>` : '';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0"><span style="font-size:13px">${m.nome} <span style="color:var(--text3);font-size:11px">(${statusLabel})</span></span>${removeBtn}</div>`;
+  }).join('') : '<div style="font-size:13px;color:var(--text3)">Nenhuma</div>';
   let body = `<div style="font-size:13px;line-height:1.8">
     <div><strong>Email:</strong> ${u.email}</div>
     <div><strong>Curso:</strong> ${u.curso||'—'} | <strong>Turma:</strong> ${u.turma||'—'}</div>
     <div><strong>Telefone:</strong> ${u.telefone||'—'}</div>
     <div><strong>Status da conta:</strong> ${ativo?'<span class="badge badge-quite">✓ Ativa</span>':'<span class="badge badge-inadim">⚠ Inativa</span>'}</div>
-    <div style="margin-top:8px"><strong>Modalidades:</strong> ${(u.modalidades||[]).map(m=>m.nome+' ('+m.status+')').join(', ')||'Nenhuma'}</div>`;
+    <div style="margin-top:8px"><strong>Modalidades:</strong></div>
+    ${modsListHtml}`;
   if(modsAprov.length){
     const calc = calcMensalidade(modsAprov);
     const custom = u.mensalidade_customizada;
@@ -1400,6 +1406,19 @@ window.recusarModalidade = async (email, idx) => {
   u.modalidades = mods;
   toast('Modalidade recusada','ok');
   renderModalidadesPendentes();updateBadges();
+};
+window.removerModalidadeAssociado = async (email, idx) => {
+  const u = usuarios.find(x=>x.email===email); if(!u) return;
+  const mod = (u.modalidades||[])[idx]; if(!mod) return;
+  if(!confirm('Remover '+(u.nome||email)+' da modalidade '+mod.nome+'? O associado poderá solicitar entrar de novo depois, se quiser.')) return;
+  const mods = [...(u.modalidades||[])];
+  mods[idx] = {...mods[idx], status:'removido', removido_em:new Date().toISOString(), removido_por:currentUser.email};
+  await updateDoc(doc(db,'usuarios',email),{modalidades:mods});
+  u.modalidades = mods;
+  toast('Associado removido da modalidade','ok');
+  verAssociado(email);
+  renderAssociados();
+  updateBadges();
 };
 
 // ── PAUSAS ────────────────────────────────────────────
